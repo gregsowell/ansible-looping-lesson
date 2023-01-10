@@ -1,0 +1,119 @@
+---
+- name: loop examples
+  hosts: localhost
+  gather_facts: false
+  vars:
+    list1:
+      - thing1
+      - thing2
+      - thing3
+
+    list2:
+      - fname: Greg
+        lname: Sowell
+      - fname: Andy
+        lname: Garrett
+
+    list3:
+      - 1:
+        - n: 1
+        - m: 1
+      - 2:
+        - n: 2
+        - m: 2
+
+    dict3:
+      1:
+        name: New Greg
+        color: Bright
+      2:
+        name: Andy
+        color: Green
+      3:
+        name: Andrew
+        color: Baby blue
+
+  tasks:
+  - name: debug list1
+    ansible.builtin.debug:
+      var: list1
+
+  - name: loop through standard list
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ list1 }}"
+
+  - name: pulling items from list 1
+    ansible.builtin.debug:
+      msg: "{{ list1[1] }}"
+
+
+  - name: loop through list of dictionaries
+    ansible.builtin.debug:
+      msg: "First name is:{{ item.fname }} last name is:{{ item.lname }}"
+    loop: "{{ list2 }}"
+
+#  - name: debug list3 full
+#    ansible.builtin.debug:
+#      var: groups
+
+  - name: debug dict3
+    ansible.builtin.debug:
+      var: dict3
+
+  - name: debug dict3 with dict2items
+    ansible.builtin.debug:
+      var: dict3 | dict2items
+
+  - name: loop through dictionary with many entries
+    ansible.builtin.debug:
+      msg: "What is the key:{{ item.key }}. What is the name:{{ item.value.name }}. => {{ item.value.color }}"
+    loop: "{{ dict3 | dict2items }}"
+
+  - name: loop through dict3 selectattr == 1
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ dict3 | dict2items | selectattr('key','==',1) }}"
+
+  - name: loop through dict3 selectattr != 1
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ dict3 | dict2items | selectattr('key','!=',1) }}"
+
+  - name: loop through dict3 selectattr search for A in value.name
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ dict3 | dict2items | selectattr('value.name','search','^A.*') }}"
+
+  - name: loop through dict3 selectattr search for A in value.name and like green
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ dict3 | dict2items | selectattr('value.name','search','^A.*') | selectattr('value.color','eq','Green') }}"
+
+  - name: loop through dict3 selectattr search for A in value.name and check that it is defined
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ dict3 | dict2items | selectattr('value.name','defined') | selectattr('value.name','search','^A.*') }}"
+
+  - name: create variable in a jinja2 loop using selectattr
+    ansible.builtin.set_fact:
+      new_var: "{% for result in dict3 | dict2items | selectattr('value.name','defined') | selectattr('value.name','search','^A.*') %}\
+                {{ result.key }}: {{ result.value.name }}_{{ result.value.color }},
+                {% endfor %}"
+
+  - name: print out new_var
+    ansible.builtin.debug:
+      var: new_var.split(',')
+
+  - name: loop through dict3 using map to create a list of names
+    ansible.builtin.debug:
+      msg: "{{ item }}"
+    loop: "{{ dict3 | dict2items | map(attribute='value.name') }}"
+
+#  - name: loop through list2 using items2dict to create new key/value pairs
+#    ansible.builtin.debug:
+#      var: list2 | items2dict(key_name='fname', value_name='lname')
+
+  - name: loop through dict3 using map to create a list of names all on one line
+    ansible.builtin.debug:
+      msg: "{{ dict3 | dict2items | map(attribute='value.name') | join(',') }}"
